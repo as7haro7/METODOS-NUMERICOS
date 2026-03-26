@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LU Factorización · Erick Poma</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1e2d45;
+    --accent: #00d4ff;
+    --accent2: #7c3aed;
+    --accent3: #10b981;
+    --warn: #f59e0b;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --L: #7c3aed;
+    --U: #00d4ff;
+    --sol: #10b981;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 20px; position: relative; z-index: 1; }
+
+  /* Header */
+  header {
+    padding: 40px 0 20px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 36px;
+  }
+
+  /* Student Info Badge */
+  .student-info {
+    display: inline-block;
+    background: rgba(124, 58, 237, 0.1);
+    border: 1px dashed var(--accent2);
+    padding: 10px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    text-align: left;
+  }
+  .student-info p {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    margin: 2px 0;
+  }
+  .student-info .label { color: var(--accent); font-weight: bold; }
+
+  .header-badge {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 3px 12px;
+    border-radius: 2px;
+    letter-spacing: 3px;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+  }
+  h1 {
+    font-size: clamp(28px, 5vw, 52px);
+    font-weight: 800;
+    line-height: 1.1;
+    background: linear-gradient(135deg, var(--text) 40%, var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    font-size: 14px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* Config panel */
+  .config-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 28px;
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 20px;
+    align-items: end;
+  }
+
+  @media (max-width: 640px) {
+    .config-panel { grid-template-columns: 1fr 1fr; }
+    .config-panel .btn-solve { grid-column: 1/-1; }
+  }
+
+  .field label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 8px;
+  }
+
+  select, input[type=number] {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 10px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    outline: none;
+    transition: border-color .2s;
+    appearance: none;
+  }
+  select:focus, input:focus { border-color: var(--accent); }
+
+  .method-tabs {
+    display: flex;
+    gap: 8px;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 10px 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .2s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .tab-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,212,255,.08);
+  }
+  .tab-btn:hover:not(.active) { border-color: var(--muted); color: var(--text); }
+
+  .btn-solve {
+    padding: 12px 28px;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: opacity .2s, transform .1s;
+    white-space: nowrap;
+  }
+  .btn-solve:hover { opacity: .9; transform: translateY(-1px); }
+  .btn-solve:active { transform: translateY(0); }
+
+  /* Matrix input */
+  .matrix-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 28px;
+  }
+  .section-title {
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .matrix-grid {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .matrix-bracket {
+    font-size: 64px;
+    color: var(--muted);
+    font-weight: 100;
+    line-height: 1;
+    margin: 0 2px;
+  }
+  .matrix-cells {
+    display: grid;
+    gap: 6px;
+  }
+  .matrix-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .cell-input {
+    width: 68px;
+    padding: 8px 6px;
+    text-align: center;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
+    outline: none;
+    transition: border-color .2s, background .2s;
+    -moz-appearance: textfield;
+  }
+  .cell-input::-webkit-inner-spin-button { display: none; }
+  .cell-input:focus { border-color: var(--accent); background: rgba(0,212,255,.05); }
+  .cell-input.b-col {
+    background: rgba(124,58,237,.12);
+    border-color: rgba(124,58,237,.4);
+    color: #c4b5fd;
+  }
+  .cell-input.b-col:focus { border-color: var(--accent2); }
+
+  .equals-sign {
+    font-size: 24px;
+    color: var(--muted);
+    padding: 0 8px;
+    font-weight: 300;
+  }
+
+  .btn-load-example {
+    margin-top: 16px;
+    padding: 7px 16px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .btn-load-example:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Results */
+  #results { opacity: 0; transition: opacity .3s; }
+  #results.visible { opacity: 1; }
+
+  .result-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 700px) { .result-grid { grid-template-columns: 1fr; } }
+
+  .result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    overflow: hidden;
+  }
+  .result-card.full { grid-column: 1/-1; }
+  .result-card.L-card { border-color: rgba(124,58,237,.4); }
+  .result-card.U-card { border-color: rgba(0,212,255,.3); }
+  .result-card.sol-card { border-color: rgba(16,185,129,.4); }
+
+  .card-title {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+  .L-card .card-title { color: var(--L); }
+  .U-card .card-title { color: var(--U); }
+  .sol-card .card-title { color: var(--sol); }
+  .steps-card .card-title { color: var(--warn); }
+
+  .matrix-display {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    justify-content: center;
+    overflow-x: auto;
+  }
+  .mat-out {
+    display: grid;
+    gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+  }
+  .mat-out-row {
+    display: flex;
+    gap: 6px;
+  }
+  .mat-cell {
+    width: 72px;
+    padding: 7px 6px;
+    text-align: right;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    font-weight: 600;
+  }
+  .L-card .mat-cell { background: rgba(124,58,237,.1); color: #c4b5fd; }
+  .U-card .mat-cell { background: rgba(0,212,255,.07); color: #67e8f9; }
+  .mat-cell.zero { opacity: .3; }
+
+  .solution-list {
+    display: grid;
+    gap: 10px;
+  }
+  .sol-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: rgba(16,185,129,.08);
+    border: 1px solid rgba(16,185,129,.2);
+    border-radius: 8px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .sol-var { color: var(--muted); font-size: 13px; }
+  .sol-val { font-size: 18px; font-weight: 700; color: var(--sol); }
+
+  .steps-content {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.9;
+    color: #94a3b8;
+    max-height: 380px;
+    overflow-y: auto;
+    padding-right: 8px;
+  }
+  .steps-content::-webkit-scrollbar { width: 4px; }
+  .steps-content::-webkit-scrollbar-track { background: var(--surface2); }
+  .steps-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .step-h { color: var(--warn); font-weight: 700; font-size: 13px; margin-top: 12px; }
+  .step-eq { color: var(--text); }
+  .step-note { color: var(--muted); font-size: 11px; }
+  .step-result { color: var(--accent3); font-weight: 700; }
+
+  .verify-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    margin-bottom: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+  }
+  .verify-ok { border-color: rgba(16,185,129,.3); }
+  .check { color: var(--sol); font-size: 16px; }
+  .cross { color: #ef4444; font-size: 16px; }
+
+  .error-msg {
+    background: rgba(239,68,68,.1);
+    border: 1px solid rgba(239,68,68,.3);
+    border-radius: 8px;
+    padding: 16px 20px;
+    color: #fca5a5;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    margin-bottom: 24px;
+  }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    border-top: 1px solid var(--border);
+    margin-top: 40px;
+    letter-spacing: 1px;
+    line-height: 1.6;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+  .footer-dev { color: var(--accent2); font-weight: bold; margin-bottom: 8px; display: block; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="student-info">
+        <p><span class="label">ESTUDIANTE:</span> Poma Condori Erick Fernando</p>
+        <p><span class="label">CI:</span> 7087337LP</p>
+        <p><span class="label">CARRERA:</span> UMSA-INFORMATICA</p>
+    </div>
+    <br>
+    <div class="header-badge">Métodos Numéricos</div>
+    <h1>Factorización LU</h1>
+    <p class="subtitle">Cholesky · Doolittle · Crout — hasta 6×6</p>
+  </header>
+
+  <div class="config-panel">
+    <div class="field">
+      <label>Dimensión n×n</label>
+      <select id="dim" onchange="buildMatrix()">
+        <option value="2">2×2</option>
+        <option value="3" selected>3×3</option>
+        <option value="4">4×4</option>
+        <option value="5">5×5</option>
+        <option value="6">6×6</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Método de Factorización</label>
+      <div class="method-tabs">
+        <button class="tab-btn" id="tab-chol" onclick="setMethod('cholesky')">Cholesky</button>
+        <button class="tab-btn active" id="tab-dool" onclick="setMethod('doolittle')">Doolittle</button>
+        <button class="tab-btn" id="tab-crou" onclick="setMethod('crout')">Crout</button>
+      </div>
+    </div>
+    <button class="btn-solve" onclick="solve()">▶ RESOLVER</button>
+  </div>
+
+  <div class="matrix-section">
+    <div class="section-title">Ingrese la matriz aumentada [A|b]</div>
+    <div class="matrix-grid" id="matrixGrid"></div>
+    <div style="text-align:center; margin-top:16px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+      <button class="btn-load-example" onclick="loadExample()">Cargar ejemplo del libro (3×3)</button>
+      <button class="btn-load-example" onclick="clearMatrix()">Limpiar</button>
+      <button class="btn-load-example" onclick="loadRandom()">Matriz aleatoria</button>
+    </div>
+  </div>
+
+  <div id="errorBox" style="display:none;" class="error-msg"></div>
+
+  <div id="results">
+    <div class="result-grid">
+      <div class="result-card L-card" id="cardL">
+        <div class="card-title"><span class="dot" style="background:var(--L)"></span>Matriz L</div>
+        <div class="matrix-display" id="outL"></div>
+      </div>
+      <div class="result-card U-card" id="cardU">
+        <div class="card-title"><span class="dot" style="background:var(--U)"></span>Matriz U</div>
+        <div class="matrix-display" id="outU"></div>
+      </div>
+      <div class="result-card sol-card">
+        <div class="card-title"><span class="dot" style="background:var(--sol)"></span>Solución del Sistema</div>
+        <div id="outSol"></div>
+      </div>
+      <div class="result-card">
+        <div class="card-title"><span class="dot" style="background:#f59e0b"></span>Verificación A·x = b</div>
+        <div id="outVerify"></div>
+      </div>
+      <div class="result-card full steps-card">
+        <div class="card-title"><span class="dot" style="background:var(--warn)"></span>Pasos del Cálculo</div>
+        <div class="steps-content" id="outSteps"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <span class="footer-dev">Desarrollado por: Erick Fernando Poma Condori (CI: 7087337LP)</span>
+  Factorización LU · Métodos Numéricos · 2026<br>
+  <span style="color:var(--border)">────────────────────────────</span><br>
+  UMSA - INFORMATICA
+</footer>
+
+<script>
+/**
+ * Script desarrollado por Erick Fernando Poma Condori
+ * CI: 7087337LP
+ */
+let method = 'doolittle';
+let n = 3;
+
+function setMethod(m) {
+  method = m;
+  ['chol','dool','crou'].forEach(k => {
+    document.getElementById('tab-' + k).classList.remove('active');
+  });
+  const map = { cholesky:'chol', doolittle:'dool', crout:'crou' };
+  document.getElementById('tab-' + map[m]).classList.add('active');
+}
+
+function buildMatrix() {
+  n = parseInt(document.getElementById('dim').value);
+  const grid = document.getElementById('matrixGrid');
+  // bracket open
+  grid.innerHTML = '';
+
+  const open = document.createElement('div');
+  open.className = 'matrix-bracket';
+  open.textContent = '[';
+  grid.appendChild(open);
+
+  const cells = document.createElement('div');
+  cells.className = 'matrix-cells';
+  cells.id = 'cellGrid';
+
+  for (let i = 0; i < n; i++) {
+    const row = document.createElement('div');
+    row.className = 'matrix-row';
+    for (let j = 0; j <= n; j++) {
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.className = 'cell-input' + (j === n ? ' b-col' : '');
+      inp.id = `c_${i}_${j}`;
+      inp.placeholder = j === n ? `b${i+1}` : `a${i+1}${j+1}`;
+      row.appendChild(inp);
+      if (j === n - 1) {
+        const sep = document.createElement('div');
+        sep.style.cssText = 'width:1px; height:36px; background:var(--border); margin:0 4px;';
+        row.appendChild(sep);
+      }
+    }
+    cells.appendChild(row);
+  }
+
+  grid.appendChild(cells);
+  const close = document.createElement('div');
+  close.className = 'matrix-bracket';
+  close.textContent = ']';
+  grid.appendChild(close);
+
+  document.getElementById('results').classList.remove('visible');
+}
+
+function getMatrix() {
+  const A = [], b = [];
+  for (let i = 0; i < n; i++) {
+    const row = [];
+    for (let j = 0; j < n; j++) {
+      const v = parseFloat(document.getElementById(`c_${i}_${j}`).value);
+      if (isNaN(v)) throw new Error(`Celda A[${i+1}][${j+1}] vacía o inválida`);
+      row.push(v);
+    }
+    A.push(row);
+    const bv = parseFloat(document.getElementById(`c_${i}_${n}`).value);
+    if (isNaN(bv)) throw new Error(`Celda b[${i+1}] vacía o inválida`);
+    b.push(bv);
+  }
+  return { A, b };
+}
+
+// ─── Doolittle ───────────────────────────────────────────────────
+function doolittle(A) {
+  const steps = [];
+  const L = Array.from({length:n}, (_,i) => Array.from({length:n}, (_,j) => i===j?1:0));
+  const U = Array.from({length:n}, () => Array(n).fill(0));
+
+  steps.push('<span class="step-h">── Factorización Doolittle (L unitaria inferior, U superior)</span>');
+
+  for (let i = 0; i < n; i++) {
+    steps.push(`<span class="step-h">Fila ${i+1}:</span>`);
+    // U row i
+    for (let j = i; j < n; j++) {
+      let sum = A[i][j];
+      let expr = `U[${i+1}][${j+1}] = A[${i+1}][${j+1}]`;
+      for (let k = 0; k < i; k++) {
+        sum -= L[i][k] * U[k][j];
+        expr += ` - L[${i+1}][${k+1}]·U[${k+1}][${j+1}]`;
+      }
+      U[i][j] = sum;
+      steps.push(`<span class="step-eq">${expr} = <span class="step-result">${fmt(sum)}</span></span>`);
+    }
+    // L col i
+    for (let j = i+1; j < n; j++) {
+      if (Math.abs(U[i][i]) < 1e-12) throw new Error('Pivote cero, no se puede factorizar');
+      let sum = A[j][i];
+      let expr = `L[${j+1}][${i+1}] = (A[${j+1}][${i+1}]`;
+      for (let k = 0; k < i; k++) {
+        sum -= L[j][k] * U[k][i];
+        expr += ` - L[${j+1}][${k+1}]·U[${k+1}][${i+1}]`;
+      }
+      sum /= U[i][i];
+      expr += `) / U[${i+1}][${i+1}]`;
+      L[j][i] = sum;
+      steps.push(`<span class="step-eq">${expr} = <span class="step-result">${fmt(sum)}</span></span>`);
+    }
+  }
+  return { L, U, steps };
+}
+
+// ─── Crout ───────────────────────────────────────────────────────
+function crout(A) {
+  const steps = [];
+  const L = Array.from({length:n}, () => Array(n).fill(0));
+  const U = Array.from({length:n}, (_,i) => Array.from({length:n}, (_,j) => i===j?1:0));
+
+  steps.push('<span class="step-h">── Factorización Crout (L inferior, U unitaria superior)</span>');
+
+  for (let j = 0; j < n; j++) {
+    steps.push(`<span class="step-h">Columna ${j+1}:</span>`);
+    for (let i = j; i < n; i++) {
+      let sum = A[i][j];
+      let expr = `L[${i+1}][${j+1}] = A[${i+1}][${j+1}]`;
+      for (let k = 0; k < j; k++) {
+        sum -= L[i][k] * U[k][j];
+        expr += ` - L[${i+1}][${k+1}]·U[${k+1}][${j+1}]`;
+      }
+      L[i][j] = sum;
+      steps.push(`<span class="step-eq">${expr} = <span class="step-result">${fmt(sum)}</span></span>`);
+    }
+    for (let i = j+1; i < n; i++) {
+      if (Math.abs(L[j][j]) < 1e-12) throw new Error('Pivote cero en L, no se puede factorizar');
+      let sum = A[j][i];
+      let expr = `U[${j+1}][${i+1}] = (A[${j+1}][${i+1}]`;
+      for (let k = 0; k < j; k++) {
+        sum -= L[j][k] * U[k][i];
+        expr += ` - L[${j+1}][${k+1}]·U[${k+1}][${i+1}]`;
+      }
+      sum /= L[j][j];
+      expr += `) / L[${j+1}][${j+1}]`;
+      U[j][i] = sum;
+      steps.push(`<span class="step-eq">${expr} = <span class="step-result">${fmt(sum)}</span></span>`);
+    }
+  }
+  return { L, U, steps };
+}
+
+// ─── Cholesky ────────────────────────────────────────────────────
+function cholesky(A) {
+  const steps = [];
+  const L = Array.from({length:n}, () => Array(n).fill(0));
+
+  steps.push('<span class="step-h">── Factorización Cholesky (A = L·Lᵀ, requiere SPD)</span>');
+
+  // Check symmetry
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+    if (Math.abs(A[i][j] - A[j][i]) > 1e-6)
+      throw new Error(`La matriz no es simétrica: A[${i+1}][${j+1}]=${A[i][j]} ≠ A[${j+1}][${i+1}]=${A[j][i]}`);
+  }
+
+  for (let i = 0; i < n; i++) {
+    steps.push(`<span class="step-h">Fila ${i+1}:</span>`);
+    for (let j = 0; j <= i; j++) {
+      let sum = A[i][j];
+      let expr;
+      if (i === j) {
+        expr = `L[${i+1}][${j+1}] = sqrt(A[${i+1}][${j+1}]`;
+        for (let k = 0; k < j; k++) {
+          sum -= L[i][k] * L[i][k];
+          expr += ` - L[${i+1}][${k+1}]²`;
+        }
+        if (sum < 0) throw new Error(`Matriz no definida positiva: raíz de número negativo (${fmt(sum)}) en posición [${i+1}][${j+1}]`);
+        L[i][j] = Math.sqrt(sum);
+        expr += `)`;
+      } else {
+        expr = `L[${i+1}][${j+1}] = (A[${i+1}][${j+1}]`;
+        for (let k = 0; k < j; k++) {
+          sum -= L[i][k] * L[j][k];
+          expr += ` - L[${i+1}][${k+1}]·L[${j+1}][${k+1}]`;
+        }
+        if (Math.abs(L[j][j]) < 1e-12) throw new Error('Pivote cero en Cholesky');
+        sum /= L[j][j];
+        expr += `) / L[${j+1}][${j+1}]`;
+        L[i][j] = sum;
+      }
+      steps.push(`<span class="step-eq">${expr} = <span class="step-result">${fmt(sum)}</span></span>`);
+    }
+  }
+
+  // U = Lᵀ
+  const U = Array.from({length:n}, (_,i) => Array.from({length:n}, (_,j) => L[j][i]));
+  steps.push('<span class="step-note">U = Lᵀ (transpuesta de L)</span>');
+  return { L, U, steps };
+}
+
+// ─── Forward / Backward substitution ────────────────────────────
+function forwardSub(L, b) {
+  const y = Array(n).fill(0);
+  const steps = ['<span class="step-h">── Sustitución hacia adelante: L·y = b</span>'];
+  for (let i = 0; i < n; i++) {
+    let sum = b[i];
+    let expr = `y[${i+1}] = (b[${i+1}]`;
+    for (let j = 0; j < i; j++) {
+      sum -= L[i][j] * y[j];
+      expr += ` - L[${i+1}][${j+1}]·y[${j+1}]`;
+    }
+    sum /= L[i][i];
+    expr += `) / L[${i+1}][${i+1}]`;
+    y[i] = sum;
+    steps.push(`<span class="step-eq">${expr} = <span class="step-result">${fmt(sum)}</span></span>`);
+  }
+  return { y, steps };
+}
+
+function backSub(U, y) {
+  const x = Array(n).fill(0);
+  const steps = ['<span class="step-h">── Sustitución hacia atrás: U·x = y</span>'];
+  for (let i = n-1; i >= 0; i--) {
+    let sum = y[i];
+    let expr = `x[${i+1}] = (y[${i+1}]`;
+    for (let j = i+1; j < n; j++) {
+      sum -= U[i][j] * x[j];
+      expr += ` - U[${i+1}][${j+1}]·x[${j+1}]`;
+    }
+    sum /= U[i][i];
+    expr += `) / U[${i+1}][${i+1}]`;
+    x[i] = sum;
+    steps.push(`<span class="step-eq">${expr} = <span class="step-result">${fmt(sum)}</span></span>`);
+  }
+  return { x, steps };
+}
+
+// ─── Render matrix ───────────────────────────────────────────────
+function renderMatrix(container, M, colorClass) {
+  container.innerHTML = '';
+  const open = document.createElement('div');
+  open.className = 'matrix-bracket';
+  open.style.fontSize = Math.max(36, 60 - n*4) + 'px';
+  open.textContent = '[';
+  container.appendChild(open);
+
+  const grid = document.createElement('div');
+  grid.className = 'mat-out';
+  grid.style.gridTemplateColumns = `repeat(${n}, auto)`;
+
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      const cell = document.createElement('div');
+      cell.className = 'mat-cell' + (M[i][j] === 0 ? ' zero' : '');
+      cell.textContent = fmt(M[i][j]);
+      grid.appendChild(cell);
+    }
+  }
+  container.appendChild(grid);
+
+  const close = document.createElement('div');
+  close.className = 'matrix-bracket';
+  close.style.fontSize = Math.max(36, 60 - n*4) + 'px';
+  close.textContent = ']';
+  container.appendChild(close);
+}
+
+// ─── Main solve ──────────────────────────────────────────────────
+function solve() {
+  const errBox = document.getElementById('errorBox');
+  errBox.style.display = 'none';
+  document.getElementById('results').classList.remove('visible');
+
+  let data;
+  try { data = getMatrix(); } catch(e) {
+    showError(e.message); return;
+  }
+
+  const { A, b } = data;
+  let L, U, facSteps;
+
+  try {
+    if (method === 'doolittle') { ({ L, U, steps: facSteps } = doolittle(A)); }
+    else if (method === 'crout') { ({ L, U, steps: facSteps } = crout(A)); }
+    else { ({ L, U, steps: facSteps } = cholesky(A)); }
+  } catch(e) { showError(e.message); return; }
+
+  const { y, steps: fwdSteps } = forwardSub(L, b);
+  const { x, steps: bkSteps } = backSub(U, y);
+
+  // Render L
+  renderMatrix(document.getElementById('outL'), L, 'L-card');
+  renderMatrix(document.getElementById('outU'), U, 'U-card');
+
+  // Solution
+  const solDiv = document.getElementById('outSol');
+  solDiv.innerHTML = '<div class="solution-list">' +
+    x.map((v,i) => `<div class="sol-item"><span class="sol-var">x<sub>${i+1}</sub></span><span class="sol-val">${fmt(v)}</span></div>`).join('') +
+    '</div>';
+
+  // Verification
+  const verDiv = document.getElementById('outVerify');
+  let verHTML = '';
+  for (let i = 0; i < n; i++) {
+    let computed = 0;
+    for (let j = 0; j < n; j++) computed += A[i][j] * x[j];
+    const ok = Math.abs(computed - b[i]) < 1e-6;
+    verHTML += `<div class="verify-row ${ok?'verify-ok':''}">
+      <span class="${ok?'check':'cross'}">${ok?'✓':'✗'}</span>
+      <span style="font-size:11px;color:var(--muted)">Ec.${i+1}:</span>
+      <span>${fmt(computed)}</span>
+      <span style="color:var(--muted)">=</span>
+      <span style="color:var(--accent)">${fmt(b[i])}</span>
+      <span style="color:var(--muted);font-size:10px;margin-left:auto">err=${Math.abs(computed-b[i]).toExponential(1)}</span>
+    </div>`;
+  }
+  verDiv.innerHTML = verHTML;
+
+  // Steps
+  const allSteps = [...facSteps, '', ...fwdSteps, '', ...bkSteps,
+    '', '<span class="step-h">── Solución Final:</span>',
+    ...x.map((v,i) => `<span class="step-result">x[${i+1}] = ${fmt(v)}</span>`)
+  ];
+  document.getElementById('outSteps').innerHTML = allSteps.join('<br>');
+
+  document.getElementById('results').classList.add('visible');
+  setTimeout(() => document.getElementById('results').scrollIntoView({behavior:'smooth', block:'start'}), 100);
+}
+
+function showError(msg) {
+  const errBox = document.getElementById('errorBox');
+  errBox.textContent = '⚠ Error: ' + msg;
+  errBox.style.display = 'block';
+}
+
+function fmt(v) {
+  if (Math.abs(v) < 1e-10) return '0';
+  const r = Math.round(v * 1e8) / 1e8;
+  if (Number.isInteger(r)) return r.toString();
+  const s = r.toFixed(6).replace(/\.?0+$/, '');
+  return s;
+}
+
+function loadExample() {
+  document.getElementById('dim').value = '3';
+  buildMatrix();
+  const vals = [
+    [8, 4, -1, 11],
+    [-2, 5, 1, 4],
+    [2, -1, 6, 7]
+  ];
+  vals.forEach((row, i) => {
+    row.forEach((v, j) => {
+      document.getElementById(`c_${i}_${j}`).value = v;
+    });
+  });
+}
+
+function clearMatrix() {
+  for (let i = 0; i < n; i++) for (let j = 0; j <= n; j++) {
+    const el = document.getElementById(`c_${i}_${j}`);
+    if (el) el.value = '';
+  }
+  document.getElementById('results').classList.remove('visible');
+}
+
+function loadRandom() {
+  // Generate diagonally dominant matrix
+  for (let i = 0; i < n; i++) {
+    let rowSum = 0;
+    for (let j = 0; j < n; j++) {
+      if (i !== j) {
+        const v = Math.round((Math.random() * 4 - 2) * 10) / 10;
+        document.getElementById(`c_${i}_${j}`).value = v;
+        rowSum += Math.abs(v);
+      }
+    }
+    // diagonal > sum of others
+    const diag = Math.ceil(rowSum) + Math.floor(Math.random() * 4) + 1;
+    document.getElementById(`c_${i}_${i}`).value = diag * (Math.random() > 0.3 ? 1 : -1);
+    document.getElementById(`c_${i}_${n}`).value = Math.round((Math.random() * 40 - 20) * 10) / 10;
+  }
+}
+
+// Init
+buildMatrix();
+loadExample();
+</script>
+</body>
+</html>
